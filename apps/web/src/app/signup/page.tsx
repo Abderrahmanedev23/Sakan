@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { Field } from '@/components/field';
+import { useI18n } from '@/components/i18n-provider';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 export default function SignUpPage() {
   const { signIn } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
   const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,30 +31,31 @@ export default function SignUpPage() {
       );
       router.push('/profile');
     } catch (err) {
-      setError(err instanceof ApiError ? err : new ApiError(0, 'Something went wrong'));
+      setError(err instanceof ApiError ? err : new ApiError(0, t['common.error']));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="narrow">
-      <h1>Create your account</h1>
-      <p className="muted">After signing up you will verify your identity with your CIN.</p>
+    <section className="page">
+      <div className="card narrow auth-card">
+      <h1>{t['signup.title']}</h1>
+      <p className="muted">{t['signup.intro']}</p>
       <form className="form" onSubmit={onSubmit} noValidate>
-        <Field label="Email" name="email" type="email" autoComplete="email" required error={error?.fieldErrors.email} />
+        <Field label={t['common.email']} name="email" type="email" autoComplete="email" required error={error?.fieldErrors.email} />
         <Field
-          label="Password"
+          label={t['common.password']}
           name="password"
           type="password"
           autoComplete="new-password"
           minLength={PASSWORD_MIN_LENGTH}
           required
-          hint={`At least ${PASSWORD_MIN_LENGTH} characters`}
+          hint={t['signup.passwordHint'](PASSWORD_MIN_LENGTH)}
           error={error?.fieldErrors.password}
         />
         <Field
-          label="Phone (optional)"
+          label={t['signup.phone']}
           name="phone"
           type="tel"
           autoComplete="tel"
@@ -61,12 +64,13 @@ export default function SignUpPage() {
         />
         {error && Object.keys(error.fieldErrors).length === 0 && <p className="error">{error.message}</p>}
         <button type="submit" className="button" disabled={busy}>
-          {busy ? 'Creating account…' : 'Sign up'}
+          {busy ? t['signup.busy'] : t['signup.submit']}
         </button>
       </form>
       <p className="muted">
-        Already have an account? <Link href="/login">Sign in</Link>
+        {t['signup.have']} <Link href="/login">{t['nav.signIn']}</Link>
       </p>
+      </div>
     </section>
   );
 }
