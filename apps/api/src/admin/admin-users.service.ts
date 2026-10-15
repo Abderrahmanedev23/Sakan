@@ -32,15 +32,16 @@ export class AdminUsersService {
   /** The pending queue is oldest submission first; every other list is newest account first. */
   async list(query: UserListQuery): Promise<Paginated<AdminUserSummary>> {
     const q = query.q?.trim();
+    // Matching ignores case (and accents) through the tables' utf8mb4_unicode_ci collation.
     const where: Prisma.UserWhereInput = {
       verificationStatus: query.verificationStatus,
       accountStatus: query.accountStatus,
       OR: q
         ? [
-            { email: { contains: q, mode: 'insensitive' } },
-            { cinNumber: { contains: q.replace(/[\s-]/g, ''), mode: 'insensitive' } },
-            { firstName: { contains: q, mode: 'insensitive' } },
-            { lastName: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q } },
+            { cinNumber: { contains: q.replace(/[\s-]/g, '') } },
+            { firstName: { contains: q } },
+            { lastName: { contains: q } },
           ]
         : undefined,
     };

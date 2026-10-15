@@ -6,11 +6,11 @@ Community-based draw platform: identity-verified participants, configurable draw
 
 ```
 apps/
-  api/        NestJS REST API (/api/v1), Prisma + PostgreSQL, BullMQ + Redis for scheduled draws
+  api/        NestJS REST API (/api/v1), Prisma + MySQL 8, BullMQ + Redis for scheduled draws
   web/        Next.js public site and admin dashboard
 packages/
   shared/     TypeScript types and enums shared by the API, web and (later) mobile apps
-docker-compose.yml   PostgreSQL 16 and Redis 7 for local development
+docker-compose.yml   MySQL 8.4 and Redis 7 for local development
 ```
 
 The API is the single source of business rules. The web app (and the future React Native app) only talk to it over HTTP, and routes are versioned under `/api/v1` so mobile clients can pin a version.
@@ -19,7 +19,7 @@ The API is the single source of business rules. The web app (and the future Reac
 
 - Node.js 22.12+ (`.nvmrc`)
 - pnpm 10 (`corepack enable`)
-- Docker, or a local PostgreSQL 16 and Redis 7
+- Docker, or a local MySQL 8 and Redis 7
 
 ## Run it locally
 
@@ -29,7 +29,7 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 
-pnpm db:up          # PostgreSQL and Redis in Docker (docker compose)
+pnpm db:up          # MySQL and Redis in Docker (docker compose)
 pnpm db:migrate     # apply the Prisma migrations
 pnpm build          # build shared, api and web (also generates the Prisma client)
 pnpm db:seed        # demo accounts and sessions (pnpm db:reset wipes and seeds again)
@@ -50,6 +50,8 @@ The seed prints the demo accounts:
 and five sessions: a completed draw you can verify, a scheduled draw with its countdown, the 3,000 × 100 MAD example from the spec, a draft, and **Session démo rapide**, which misses a single entry. Sign in as `demo@sakan.ma`, buy that last entry, confirm the simulated payment, and the session fills, its draw is scheduled two minutes later and runs on its own.
 
 `pnpm dev:api` and `pnpm dev:web` start each app alone. `pnpm --filter @sakan/api test` runs the API unit tests after a build. `docker compose down` stops the databases.
+
+To use a MySQL 8 you already run instead of Docker, create an empty `sakan` database and point `DATABASE_URL` in `apps/api/.env` at it (`mysql://user:password@host:3306/sakan`). `pnpm db:migrate` also creates and drops a temporary shadow database, so that account needs the right to create databases. If you ran the earlier PostgreSQL version, `docker compose down -v` removes its old data volume; nothing carries over.
 
 ## Data model
 
@@ -141,7 +143,7 @@ pnpm --filter @sakan/api admin:promote you@example.com
 
 ## Deploying
 
-[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through a free test deployment: web on Vercel, API on Render, PostgreSQL on Neon, Redis on Upstash and CIN scans on Supabase Storage.
+[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through a free test deployment: web on Vercel, API on Render, MySQL on Aiven, Redis on Upstash and CIN scans on Supabase Storage.
 
 ## Not built yet
 

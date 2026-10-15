@@ -241,9 +241,9 @@ export class AdminSessionsService {
         sessionId: id,
         OR: q
           ? [
-              { reference: { contains: q, mode: 'insensitive' } },
-              { user: { email: { contains: q, mode: 'insensitive' } } },
-              { user: { cinNumber: { contains: q, mode: 'insensitive' } } },
+              { reference: { contains: q } },
+              { user: { email: { contains: q } } },
+              { user: { cinNumber: { contains: q } } },
             ]
           : undefined,
       },

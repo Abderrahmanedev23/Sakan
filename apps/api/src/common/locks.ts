@@ -6,5 +6,5 @@ import type { Prisma } from '../generated/prisma/client.js';
  * and admin actions on one session run one at a time and the target can't be overshot.
  */
 export async function lockSession(tx: Prisma.TransactionClient, sessionId: string): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM "DrawSession" WHERE id = ${sessionId}::uuid FOR UPDATE`;
+  await tx.$queryRaw`SELECT id FROM \`DrawSession\` WHERE id = ${sessionId} FOR UPDATE`;
 }

@@ -1,8 +1,7 @@
 // Gives an existing account the ADMIN role. There is deliberately no API for this.
 // Usage: pnpm --filter @sakan/api admin:promote you@example.com
 import 'dotenv/config';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../generated/prisma/client.js';
+import { createPrismaClient } from '../prisma/database.js';
 
 const email = process.argv[2]?.trim().toLowerCase();
 if (!email) {
@@ -10,7 +9,7 @@ if (!email) {
   process.exit(1);
 }
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+const prisma = createPrismaClient();
 try {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {

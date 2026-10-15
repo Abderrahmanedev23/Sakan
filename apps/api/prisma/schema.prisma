@@ -1,4 +1,5 @@
 // Sakan data model.
+// Database: MySQL 8. UUIDs are CHAR(36); free-form text that can exceed 191 chars is TEXT.
 // Money is stored as integer minor units (centimes) to avoid float rounding.
 // Enums are mirrored in packages/shared/src/enums.ts for clients.
 
@@ -9,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
 }
 
 // ─── Users & identity verification ───────────────────────────────────────────
@@ -37,7 +38,7 @@ enum IdentityDocumentSide {
 }
 
 model User {
-  id                 String             @id @default(uuid()) @db.Uuid
+  id                 String             @id @default(uuid()) @db.Char(36)
   email              String             @unique
   phone              String?            @unique
   passwordHash       String
@@ -73,10 +74,10 @@ model User {
 /// A signed-in device. The client holds the random token; only its SHA-256 is stored,
 /// so a database leak does not leak usable tokens. Revoked on logout and suspension.
 model AuthSession {
-  id        String    @id @default(uuid()) @db.Uuid
-  userId    String    @db.Uuid
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @db.Char(36)
   tokenHash String    @unique
-  userAgent String?
+  userAgent String?   @db.Text
   ipAddress String?
   expiresAt DateTime
   revokedAt DateTime?
@@ -90,8 +91,8 @@ model AuthSession {
 /// A CIN scan stored in private object storage. Only the storage key is kept here.
 /// A resubmission supersedes the previous scans instead of deleting them, for the audit trail.
 model IdentityDocument {
-  id           String               @id @default(uuid()) @db.Uuid
-  userId       String               @db.Uuid
+  id           String               @id @default(uuid()) @db.Char(36)
+  userId       String               @db.Char(36)
   side         IdentityDocumentSide
   storageKey   String               @unique
   mimeType     String
@@ -107,11 +108,11 @@ model IdentityDocument {
 
 /// Append-only history of admin approval / rejection decisions.
 model VerificationReview {
-  id         String             @id @default(uuid()) @db.Uuid
-  userId     String             @db.Uuid
-  reviewerId String             @db.Uuid
+  id         String             @id @default(uuid()) @db.Char(36)
+  userId     String             @db.Char(36)
+  reviewerId String             @db.Char(36)
   decision   VerificationStatus
-  reason     String?
+  reason     String?            @db.Text
   createdAt  DateTime           @default(now())
 
   user     User @relation("ReviewSubject", fields: [userId], references: [id], onDelete: Cascade)
@@ -133,11 +134,11 @@ enum SessionStatus {
 }
 
 model DrawSession {
-  id          String        @id @default(uuid()) @db.Uuid
+  id          String        @id @default(uuid()) @db.Char(36)
   /// Short public number used in entry references, e.g. 1 → SKN-0001-000042.
   number      Int           @unique @default(autoincrement())
   name        String
-  description String?
+  description String?       @db.Text
   status      SessionStatus @default(DRAFT)
 
   entryPriceCents   Int
@@ -151,8 +152,8 @@ model DrawSession {
   winnerCount       Int     @default(1)
 
   /// Local time of day (HH:mm) the draw runs once the target is reached, e.g. "18:00".
-  drawTimeOfDay String @default("18:00")
-  timezone      String @default("Africa/Casablanca")
+  drawTimeOfDay    String @default("18:00")
+  timezone         String @default("Africa/Casablanca")
   /// When set, the draw runs this many minutes after the session fills instead of at drawTimeOfDay.
   drawDelayMinutes Int?
 
@@ -161,7 +162,7 @@ model DrawSession {
   filledAt        DateTime?
   drawScheduledAt DateTime?
 
-  createdById String   @db.Uuid
+  createdById String   @db.Char(36)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -183,11 +184,11 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id          String        @id @default(uuid()) @db.Uuid
+  id          String        @id @default(uuid()) @db.Char(36)
   /// Human-readable unique reference shown to the user, e.g. PAY-7K3F9Q2M.
   reference   String        @unique
-  userId      String        @db.Uuid
-  sessionId   String        @db.Uuid
+  userId      String        @db.Char(36)
+  sessionId   String        @db.Char(36)
   amountCents Int
   currency    String        @default("MAD")
   status      PaymentStatus @default(PENDING)
@@ -195,10 +196,10 @@ model Payment {
   provider              String
   providerTransactionId String?
   /// Client-supplied key so a retried request never creates a second payment.
-  idempotencyKey        String  @unique
-  failureReason         String?
+  idempotencyKey        String    @unique
+  failureReason         String?   @db.Text
   /// Where the client sends the user to pay; returned again when a request is retried.
-  checkoutUrl           String?
+  checkoutUrl           String?   @db.Text
   /// A PENDING payment holds a place in the session until this time.
   expiresAt             DateTime?
   /// Raw provider callback payload, kept for disputes.
@@ -227,12 +228,12 @@ enum EntryStatus {
 
 /// One participation in a session. Created only from a succeeded payment.
 model Entry {
-  id        String      @id @default(uuid()) @db.Uuid
+  id        String      @id @default(uuid()) @db.Char(36)
   /// Public unique reference, e.g. SKN-0001-002917.
   reference String      @unique
-  sessionId String      @db.Uuid
-  userId    String      @db.Uuid
-  paymentId String      @unique @db.Uuid
+  sessionId String      @db.Char(36)
+  userId    String      @db.Char(36)
+  paymentId String      @unique @db.Char(36)
   /// 1-based position within the session; the draw picks a sequence number.
   sequence  Int
   status    EntryStatus @default(ACTIVE)
@@ -262,8 +263,8 @@ enum DrawStatus {
 /// seed is stored at the same time but must only be exposed once the draw is
 /// COMPLETED, so anyone can then recompute the winner.
 model Draw {
-  id          String     @id @default(uuid()) @db.Uuid
-  sessionId   String     @unique @db.Uuid
+  id          String     @id @default(uuid()) @db.Char(36)
+  sessionId   String     @unique @db.Char(36)
   status      DrawStatus @default(SCHEDULED)
   scheduledAt DateTime
 
@@ -276,7 +277,7 @@ model Draw {
   startedAt   DateTime?
   completedAt DateTime?
   /// Last error when a run failed; the job retries and an admin can retry by hand.
-  lastError   String?
+  lastError   String?   @db.Text
   createdAt   DateTime  @default(now())
 
   session DrawSession  @relation(fields: [sessionId], references: [id])
@@ -284,9 +285,9 @@ model Draw {
 }
 
 model DrawWinner {
-  id       String @id @default(uuid()) @db.Uuid
-  drawId   String @db.Uuid
-  entryId  String @db.Uuid
+  id       String @id @default(uuid()) @db.Char(36)
+  drawId   String @db.Char(36)
+  entryId  String @db.Char(36)
   /// 1 for the first prize, 2 for the second, ...
   position Int
 
@@ -301,8 +302,8 @@ model DrawWinner {
 
 /// Append-only log of important operations. Never updated or deleted by the app.
 model AuditLog {
-  id         String   @id @default(uuid()) @db.Uuid
-  actorId    String?  @db.Uuid
+  id         String   @id @default(uuid()) @db.Char(36)
+  actorId    String?  @db.Char(36)
   action     String
   entityType String
   entityId   String?

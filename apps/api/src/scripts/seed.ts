@@ -5,14 +5,14 @@
 // Never run against production: it refuses when NODE_ENV=production.
 import 'dotenv/config';
 import { ConfigService } from '@nestjs/config';
-import { PrismaPg } from '@prisma/adapter-pg';
 import { formatEntryReference } from '@sakan/shared';
 import { createHash, randomUUID } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import { hashPassword } from '../auth/password.js';
 import { nextDrawTime } from '../draws/draw-schedule.js';
 import { generateSeed, hashEntries, pickWinnerIndexes } from '../draws/draw-selection.js';
-import { PrismaClient, type Prisma } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+import { createPrismaClient } from '../prisma/database.js';
 import { StorageService } from '../storage/storage.service.js';
 
 const ADMIN = { email: 'admin@sakan.ma', password: 'SakanAdmin2026!' };
@@ -29,7 +29,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const reset = process.argv.includes('--reset');
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+const prisma = createPrismaClient();
 const storage = new StorageService(new ConfigService(process.env));
 
 /** A plain coloured PNG used as a stand-in CIN scan, so the admin review screen has images to show. */
@@ -161,9 +161,18 @@ async function main() {
     return;
   }
   if (reset) {
-    await prisma.$executeRawUnsafe(
-      'TRUNCATE "DrawWinner", "Draw", "Entry", "Payment", "DrawSession", "AuditLog", "VerificationReview", "IdentityDocument", "AuthSession", "User" RESTART IDENTITY CASCADE',
-    );
+    // Children before parents, so no foreign key blocks a delete. Then restart session numbers at 1.
+    await prisma.drawWinner.deleteMany();
+    await prisma.draw.deleteMany();
+    await prisma.entry.deleteMany();
+    await prisma.payment.deleteMany();
+    await prisma.drawSession.deleteMany();
+    await prisma.auditLog.deleteMany();
+    await prisma.verificationReview.deleteMany();
+    await prisma.identityDocument.deleteMany();
+    await prisma.authSession.deleteMany();
+    await prisma.user.deleteMany();
+    await prisma.$executeRawUnsafe('ALTER TABLE `DrawSession` AUTO_INCREMENT = 1');
     console.log('Wiped all tables.');
   }
 
