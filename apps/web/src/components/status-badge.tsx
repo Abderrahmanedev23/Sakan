@@ -1,14 +1,10 @@
-import type { AccountStatus, VerificationStatus } from '@sakan/shared';
+'use client';
 
-const LABELS: Record<VerificationStatus | AccountStatus, string> = {
-  UNSUBMITTED: 'Not submitted',
-  PENDING: 'Under review',
-  APPROVED: 'Verified',
-  REJECTED: 'Rejected',
-  ACTIVE: 'Active',
-  SUSPENDED: 'Suspended',
-};
+import type { AccountStatus, VerificationStatus } from '@sakan/shared';
+import { statusKey } from '@/lib/i18n';
+import { useI18n } from './i18n-provider';
 
 export function StatusBadge({ status }: { status: VerificationStatus | AccountStatus }) {
-  return <span className={`badge badge-${status.toLowerCase()}`}>{LABELS[status]}</span>;
+  const { t } = useI18n();
+  return <span className={`badge badge-${status.toLowerCase()}`}>{t[statusKey(status)]}</span>;
 }

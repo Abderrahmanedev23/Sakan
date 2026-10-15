@@ -5,22 +5,26 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { AdminOnly } from '@/components/admin-only';
+import { useI18n } from '@/components/i18n-provider';
 import { StatusBadge } from '@/components/status-badge';
 import { api, ApiError } from '@/lib/api';
+import { formatDateTime } from '@/lib/i18n';
 
 export default function AdminUserPage() {
   const { id } = useParams<{ id: string }>();
+  const { t } = useI18n();
   return (
-    <>
+    <div className="page">
       <p>
-        <Link href="/admin">← Back to reviews</Link>
+        <Link href="/admin" className="text-link">{t['admin.back']}</Link>
       </p>
       <AdminOnly>{(token) => <UserReview token={token} id={id} />}</AdminOnly>
-    </>
+    </div>
   );
 }
 
 function UserReview({ token, id }: { token: string; id: string }) {
+  const { locale, t } = useI18n();
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,8 +35,8 @@ function UserReview({ token, id }: { token: string; id: string }) {
     api.admin
       .user(token, id)
       .then(setDetail)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this user'));
-  }, [token, id]);
+      .catch((err) => setError(err instanceof ApiError ? err.message : t['admin.userLoadError']));
+  }, [token, id, t]);
 
   async function act(action: () => Promise<AdminUserDetail>) {
     setBusy(true);
@@ -43,14 +47,14 @@ function UserReview({ token, id }: { token: string; id: string }) {
       setSuspendReason('');
     } catch (err) {
       setError(
-        err instanceof ApiError ? (Object.values(err.fieldErrors)[0] ?? err.message) : 'Something went wrong',
+        err instanceof ApiError ? (Object.values(err.fieldErrors)[0] ?? err.message) : t['common.error'],
       );
     } finally {
       setBusy(false);
     }
   }
 
-  if (!detail) return error ? <p className="error">{error}</p> : <p className="muted">Loading…</p>;
+  if (!detail) return error ? <p className="error">{error}</p> : <p className="muted">{t['common.loading']}</p>;
   const { user, reviews, auditLogs } = detail;
 
   return (
@@ -64,24 +68,24 @@ function UserReview({ token, id }: { token: string; id: string }) {
 
       <div className="grid">
         <div className="card">
-          <h2>CIN details</h2>
+          <h2>{t['admin.details']}</h2>
           <dl className="details">
-            <dt>Email</dt>
+            <dt>{t['common.email']}</dt>
             <dd>{user.email}</dd>
-            <dt>Phone</dt>
+            <dt>{t['field.phone']}</dt>
             <dd>{user.phone ?? '—'}</dd>
-            <dt>First name</dt>
+            <dt>{t['field.firstName']}</dt>
             <dd>{user.firstName ?? '—'}</dd>
-            <dt>Last name</dt>
+            <dt>{t['field.lastName']}</dt>
             <dd>{user.lastName ?? '—'}</dd>
-            <dt>Date of birth</dt>
+            <dt>{t['field.dateOfBirth']}</dt>
             <dd>{user.dateOfBirth ?? '—'}</dd>
-            <dt>CIN number</dt>
+            <dt>{t['field.cinNumber']}</dt>
             <dd>{user.cinNumber ?? '—'}</dd>
-            <dt>CIN expires</dt>
+            <dt>{t['field.cinExpires']}</dt>
             <dd>{user.cinExpiresAt ?? '—'}</dd>
-            <dt>Submitted</dt>
-            <dd>{user.identitySubmittedAt ? new Date(user.identitySubmittedAt).toLocaleString('fr-MA') : '—'}</dd>
+            <dt>{t['field.submitted']}</dt>
+            <dd>{user.identitySubmittedAt ? formatDateTime(user.identitySubmittedAt, locale) : '—'}</dd>
           </dl>
         </div>
         {user.documents.map((doc) => (
@@ -93,13 +97,13 @@ function UserReview({ token, id }: { token: string; id: string }) {
 
       {user.verificationStatus === 'PENDING' && (
         <div className="card actions">
-          <h2>Decision</h2>
-          <p className="muted">Check that the photos match the details and the card is genuine and not expired.</p>
+          <h2>{t['admin.decision']}</h2>
+          <p className="muted">{t['admin.decisionHint']}</p>
           <button type="button" className="button" disabled={busy} onClick={() => act(() => api.admin.approve(token, id))}>
-            Approve
+            {t['admin.approve']}
           </button>
           <textarea
-            placeholder="Reason for rejection, shown to the user (e.g. back photo is blurry)"
+            placeholder={t['admin.rejectPlaceholder']}
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             rows={2}
@@ -110,18 +114,18 @@ function UserReview({ token, id }: { token: string; id: string }) {
             disabled={busy}
             onClick={() => act(() => api.admin.reject(token, id, rejectReason))}
           >
-            Reject
+            {t['admin.reject']}
           </button>
         </div>
       )}
 
       {user.role !== 'ADMIN' && (
         <div className="card actions">
-          <h2>Account</h2>
+          <h2>{t['admin.account']}</h2>
           {user.accountStatus === 'ACTIVE' ? (
             <>
               <textarea
-                placeholder="Reason for suspension (kept in the audit log)"
+                placeholder={t['admin.suspendPlaceholder']}
                 value={suspendReason}
                 onChange={(e) => setSuspendReason(e.target.value)}
                 rows={2}
@@ -132,7 +136,7 @@ function UserReview({ token, id }: { token: string; id: string }) {
                 disabled={busy}
                 onClick={() => act(() => api.admin.suspend(token, id, suspendReason))}
               >
-                Suspend account
+                {t['admin.suspend']}
               </button>
             </>
           ) : (
@@ -142,31 +146,31 @@ function UserReview({ token, id }: { token: string; id: string }) {
               disabled={busy}
               onClick={() => act(() => api.admin.reactivate(token, id))}
             >
-              Reactivate account
+              {t['admin.reactivate']}
             </button>
           )}
         </div>
       )}
 
-      <h2>Review history</h2>
+      <h2>{t['admin.reviews']}</h2>
       {reviews.length === 0 ? (
-        <p className="muted">No decisions yet.</p>
+        <p className="muted">{t['admin.noReviews']}</p>
       ) : (
         <ul className="log">
           {reviews.map((r) => (
             <li key={r.id}>
-              <StatusBadge status={r.decision} /> by {r.reviewerEmail} on {new Date(r.createdAt).toLocaleString('fr-MA')}
+              <StatusBadge status={r.decision} /> {t['admin.byOn'](r.reviewerEmail, formatDateTime(r.createdAt, locale))}
               {r.reason && <div className="muted">{r.reason}</div>}
             </li>
           ))}
         </ul>
       )}
 
-      <h2>Audit log</h2>
+      <h2>{t['admin.audit']}</h2>
       <ul className="log">
         {auditLogs.map((log) => (
           <li key={log.id}>
-            <code>{log.action}</code> by {log.actorEmail ?? 'system'} on {new Date(log.createdAt).toLocaleString('fr-MA')}
+            <code>{log.action}</code> {t['admin.byOn'](log.actorEmail ?? t['admin.system'], formatDateTime(log.createdAt, locale))}
             {log.ipAddress && <span className="muted"> · {log.ipAddress}</span>}
           </li>
         ))}
@@ -176,6 +180,7 @@ function UserReview({ token, id }: { token: string; id: string }) {
 }
 
 function DocumentImage({ token, doc }: { token: string; doc: IdentityDocumentInfo }) {
+  const { t } = useI18n();
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -195,13 +200,13 @@ function DocumentImage({ token, doc }: { token: string; doc: IdentityDocumentInf
 
   return (
     <figure className="card document">
-      <figcaption>{doc.side === 'FRONT' ? 'Front' : 'Back'}</figcaption>
+      <figcaption>{doc.side === 'FRONT' ? t['admin.front'] : t['admin.back.side']}</figcaption>
       {url ? (
         <a href={url} target="_blank" rel="noreferrer">
           <img src={url} alt={`CIN ${doc.side.toLowerCase()}`} />
         </a>
       ) : (
-        <p className="muted">{failed ? 'Could not load the image.' : 'Loading…'}</p>
+        <p className="muted">{failed ? t['admin.imageError'] : t['common.loading']}</p>
       )}
     </figure>
   );

@@ -1,37 +1,45 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useI18n } from './i18n-provider';
 
 export function Nav() {
   const { user, signOut } = useAuth();
+  const { t } = useI18n();
   const router = useRouter();
+  const pathname = usePathname();
+  const active = (href: string) => (pathname === href ? 'page' : undefined);
 
   return (
-    <nav>
-      <Link href="/">Sessions</Link>
-      {user?.role === 'ADMIN' && <Link href="/admin">Admin</Link>}
-      {user ? (
-        <>
-          <Link href="/profile">My account</Link>
+    <nav className="nav">
+      <div className="nav-links">
+        <Link href="/" aria-current={active('/')}>{t['nav.home']}</Link>
+        <Link href="/#steps">{t['nav.steps']}</Link>
+        <Link href="/#faq">{t['nav.faq']}</Link>
+        {user?.role === 'ADMIN' && <Link href="/admin" aria-current={active('/admin')}>{t['nav.admin']}</Link>}
+        {user && <Link href="/profile" aria-current={active('/profile')}>{t['nav.account']}</Link>}
+      </div>
+      <div className="nav-actions">
+        {user ? (
           <button
             type="button"
-            className="link"
+            className="button secondary small"
             onClick={async () => {
               await signOut();
               router.push('/');
             }}
           >
-            Sign out
+            {t['nav.signOut']}
           </button>
-        </>
-      ) : user === null ? (
-        <>
-          <Link href="/login">Sign in</Link>
-          <Link href="/signup">Sign up</Link>
-        </>
-      ) : null}
+        ) : user === null ? (
+          <>
+            <Link href="/login" className="button secondary small">{t['nav.signIn']}</Link>
+            <Link href="/signup" className="button small">{t['nav.signUp']}</Link>
+          </>
+        ) : null}
+      </div>
     </nav>
   );
 }

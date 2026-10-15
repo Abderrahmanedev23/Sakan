@@ -1,26 +1,49 @@
 import type { Metadata } from 'next';
+import { Cairo } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { I18nProvider } from '@/components/i18n-provider';
+import { LanguageSwitch } from '@/components/language-switch';
+import { Logo } from '@/components/logo';
 import { Nav } from '@/components/nav';
+import { SiteFooter } from '@/components/site-footer';
 import { AuthProvider } from '@/lib/auth';
+import { dirOf } from '@/lib/i18n';
+import { getDictionary } from '@/lib/locale';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'Sakan',
-  description: 'Transparent community draw sessions',
-};
+const cairo = Cairo({ subsets: ['arabic', 'latin'], display: 'swap', variable: '--font-cairo' });
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getDictionary();
+  return { title: 'Sakan · سكن', description: t['meta.description'] };
+}
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const { locale, t } = await getDictionary();
   return (
-    <html lang="fr">
+    <html lang={locale} dir={dirOf(locale)} className={cairo.variable}>
       <body>
-        <AuthProvider>
-          <header className="header">
-            <Link href="/" className="brand">Sakan</Link>
-            <Nav />
-          </header>
-          <main className="main">{children}</main>
-        </AuthProvider>
+        <I18nProvider locale={locale}>
+          <AuthProvider>
+            <div className="topbar">
+              <div className="container topbar-inner">
+                <span>{t['brand.tagline']}</span>
+                <LanguageSwitch />
+              </div>
+            </div>
+            <header className="header">
+              <div className="container header-inner">
+                <Link href="/" className="brand" aria-label="Sakan">
+                  <Logo />
+                </Link>
+                <Nav />
+              </div>
+            </header>
+            <main className="main">{children}</main>
+            <SiteFooter />
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );
