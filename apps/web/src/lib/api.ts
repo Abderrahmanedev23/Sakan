@@ -23,7 +23,10 @@ import type {
   VerificationStatus,
 } from '@sakan/shared';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+// Server-rendered pages can reach the API by another address than the browser, e.g. the Docker
+// image, where the browser uses the relative /api/v1 and the server calls the API container.
+const API_URL = typeof window === 'undefined' ? (process.env.API_INTERNAL_URL ?? PUBLIC_API_URL) : PUBLIC_API_URL;
 
 /** An error response from the API, with per-field messages for invalid input. */
 export class ApiError extends Error {

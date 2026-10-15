@@ -11,6 +11,7 @@ apps/
 packages/
   shared/     TypeScript types and enums shared by the API, web and (later) mobile apps
 docker-compose.yml   MySQL 8.4 and Redis 7 for local development
+docker/              Standalone compose file that runs the published images (no code needed)
 ```
 
 The API is the single source of business rules. The web app (and the future React Native app) only talk to it over HTTP, and routes are versioned under `/api/v1` so mobile clients can pin a version.
@@ -20,6 +21,10 @@ The API is the single source of business rules. The web app (and the future Reac
 - Node.js 22.12+ (`.nvmrc`)
 - pnpm 10 (`corepack enable`)
 - Docker, or a local MySQL 8 and Redis 7
+
+## Run it with Docker only
+
+No code or Node.js needed: download [`docker/docker-compose.yml`](docker/docker-compose.yml) and run `docker compose up -d`, then open http://localhost:3000. It pulls the published images, creates the database and loads the demo accounts. See [`docker/README.md`](docker/README.md).
 
 ## Run it locally
 
