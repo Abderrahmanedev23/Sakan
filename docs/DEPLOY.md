@@ -51,17 +51,52 @@ Supabase pauses a free project after 7 days without activity. If that happens, C
 
 ## 4. API: Render
 
+Create the service by hand. Render's **Blueprint** button can ask for a payment card; a single free web service usually does not.
+
 1. Sign up at [render.com](https://render.com) with your GitHub account.
-2. Click **New → Blueprint** and pick the `Sakan` repository. Render reads [`render.yaml`](../render.yaml) and proposes one free web service, `sakan-api`.
-3. It asks for the values marked secret. Paste:
-   - `DATABASE_URL` from step 1
-   - `REDIS_URL` from step 2
-   - `CORS_ORIGINS`: `https://sakan.vercel.app` for now. You fix it in step 6 if Vercel gives you another address.
-   - the five `S3_...` values from step 3
-4. Click **Apply**. The first build takes a few minutes. Each start applies any new database migrations before the server starts.
-5. When it shows **Live**, open `https://sakan-api.onrender.com/api/v1/health` (Render shows the real address at the top of the service page). You should see `{"status":"ok",...}`.
+2. Click **New → Web Service**, connect GitHub if asked, and pick the `Sakan` repository.
+3. Fill in the form:
+
+   | Field | Value |
+   | --- | --- |
+   | Name | `sakan-api` |
+   | Language | `Node` |
+   | Branch | `main` |
+   | Region | `Frankfurt (EU Central)` |
+   | Root Directory | leave empty |
+   | Build Command | `corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm --filter "@sakan/api..." build` |
+   | Start Command | `corepack pnpm --filter @sakan/api start:prod` |
+   | Instance Type | **Free** |
+
+4. Under **Environment Variables**, click **Add from .env** and paste this, replacing each `...` with your value from steps 1 to 3:
+
+   ```
+   NODE_VERSION=22
+   COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+   NODE_ENV=production
+   TRUST_PROXY=1
+   PAYMENT_PROVIDER=stub
+   AUTH_SESSION_TTL_DAYS=30
+   CORS_ORIGINS=https://sakan.vercel.app
+   DATABASE_URL=...
+   REDIS_URL=...
+   STORAGE_DRIVER=s3
+   S3_FORCE_PATH_STYLE=true
+   S3_ENDPOINT=...
+   S3_REGION=...
+   S3_BUCKET=cin-scans
+   S3_ACCESS_KEY_ID=...
+   S3_SECRET_ACCESS_KEY=...
+   ```
+
+   Keep `CORS_ORIGINS` as it is for now; you fix it in step 6 if Vercel gives you another address.
+5. Open **Advanced** and set **Health Check Path** to `/api/v1/health`.
+6. Click **Deploy Web Service**. The first build takes a few minutes. Each start applies any new database migrations before the server starts.
+7. When it shows **Live**, open `https://sakan-api.onrender.com/api/v1/health` (Render shows the real address at the top of the service page). You should see `{"status":"ok",...}`.
 
 Every push to `main` redeploys the API.
+
+If Render still asks for a card even here, stop and tell Claude in the project, and it will switch the API to another free host.
 
 ## 5. Website: Vercel
 

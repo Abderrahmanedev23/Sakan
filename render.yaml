@@ -1,6 +1,7 @@
 # Render Blueprint for the Sakan API (free plan).
-# Render creates the service from this file; values marked "sync: false" are asked for
-# in the dashboard when the Blueprint is first applied. See docs/DEPLOY.md.
+# Optional: Render may ask for a payment card to use Blueprints. docs/DEPLOY.md creates the
+# same service by hand instead; keep the two in sync. Values marked "sync: false" are asked
+# for in the dashboard when the Blueprint is first applied.
 services:
   - type: web
     name: sakan-api
