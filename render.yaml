@@ -37,7 +37,9 @@ services:
       # The Vercel address of the web app, e.g. https://sakan.vercel.app
       - key: CORS_ORIGINS
         sync: false
-      # CIN scans: a private Backblaze B2 (or Cloudflare R2) bucket.
+      # CIN scans: a private Supabase Storage bucket, reached through its S3 API.
+      - key: S3_FORCE_PATH_STYLE
+        value: "true"
       - key: S3_ENDPOINT
         sync: false
       - key: S3_REGION

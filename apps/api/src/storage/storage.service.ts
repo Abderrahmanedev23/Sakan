@@ -19,7 +19,7 @@ interface StorageBackend {
  * STORAGE_DRIVER picks the backend:
  * - `local` (default) writes to PRIVATE_STORAGE_DIR. Fine on a machine with a persistent disk,
  *   but hosts with an ephemeral disk (Render's free plan) lose the files on every restart.
- * - `s3` writes to a private bucket on any S3-compatible store (Cloudflare R2, Backblaze B2, AWS S3).
+ * - `s3` writes to a private bucket on any S3-compatible store (Supabase Storage, Cloudflare R2, AWS S3).
  */
 @Injectable()
 export class StorageService implements StorageBackend {
