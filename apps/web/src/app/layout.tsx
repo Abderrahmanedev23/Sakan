@@ -3,7 +3,6 @@ import { Cairo } from 'next/font/google';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { I18nProvider } from '@/components/i18n-provider';
-import { LanguageSwitch } from '@/components/language-switch';
 import { Logo } from '@/components/logo';
 import { Nav } from '@/components/nav';
 import { SiteFooter } from '@/components/site-footer';
@@ -20,18 +19,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const { locale, t } = await getDictionary();
+  const { locale } = await getDictionary();
   return (
     <html lang={locale} dir={dirOf(locale)} className={cairo.variable}>
       <body>
         <I18nProvider locale={locale}>
           <AuthProvider>
-            <div className="topbar">
-              <div className="container topbar-inner">
-                <span>{t['brand.tagline']}</span>
-                <LanguageSwitch />
-              </div>
-            </div>
             <header className="header">
               <div className="container header-inner">
                 <Link href="/" className="brand" aria-label="Sakan">
