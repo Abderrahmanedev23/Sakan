@@ -44,7 +44,8 @@ The schema lives in [`apps/api/prisma/schema.prisma`](apps/api/prisma/schema.pri
 
 | Model | Purpose |
 | --- | --- |
-| `User` | Account, role, CIN details and verification status (`UNSUBMITTED → PENDING → APPROVED / REJECTED`). |
+| `User` | Account, role, account status (`ACTIVE` / `SUSPENDED`), CIN details and verification status (`UNSUBMITTED → PENDING → APPROVED / REJECTED`, and `REJECTED → PENDING` on resubmission). |
+| `AuthSession` | One signed-in device: hashed bearer token, expiry, revocation. |
 | `IdentityDocument` | CIN scans. Only the private storage key is stored, never the file. |
 | `VerificationReview` | Append-only history of admin approve / reject decisions. |
 | `DrawSession` | Price, target entries, draw time of day and timezone, status `DRAFT → OPEN ⇄ PAUSED → FULL → SCHEDULED → COMPLETED`, or `CANCELLED`. |
@@ -68,6 +69,31 @@ Running a draw twice is safe: only one run can claim a `SCHEDULED` draw, and eve
 
 `apps/api/src/payments/payment-provider.ts` defines the provider interface (checkout, signed callback verification, refund). Only a development stub is wired in today; a real Moroccan provider such as CMI plugs in behind the same interface.
 
+## Accounts and identity verification
+
+Clients send `Authorization: Bearer <token>`, which works the same for the web app and a mobile app. Tokens are random, only their SHA-256 is stored (`AuthSession`), and they are checked on every request, so logout and suspension take effect immediately. Every route is private unless marked `@Public()`; admin routes use `@Roles('ADMIN')`.
+
+| Endpoint | Who | What |
+| --- | --- | --- |
+| `POST /auth/register`, `POST /auth/login` | anyone | Returns `{ token, expiresAt, user }`. Rate limited per IP. |
+| `POST /auth/logout` | signed in | Revokes the current token. |
+| `GET /me` | signed in | Own profile, verification status and rejection reason. |
+| `PUT /me/identity` | signed in | `multipart/form-data`: `firstName`, `lastName`, `dateOfBirth`, `cinNumber`, `cinExpiresAt` (dates as `YYYY-MM-DD`) and image files `front` and `back`. Moves the account to `PENDING`. |
+| `GET /admin/users?verificationStatus=PENDING` | admin | Review queue, oldest first. Also filters by `accountStatus`, searches with `q`, pages with `cursor`. |
+| `GET /admin/users/:id` | admin | Details, current CIN scans, review history and audit log. |
+| `POST /admin/users/:id/verification/approve` / `reject` | admin | `reject` needs `{ reason }`, which the user sees. |
+| `POST /admin/users/:id/suspend` / `reactivate` | admin | Suspension needs `{ reason }` and signs the user out everywhere. |
+| `GET /admin/identity-documents/:id/file` | admin | Streams a CIN scan. Every view is audit logged. |
+
+CIN scans are checked by their content (JPEG, PNG or WebP, 5 MB max) and written to `PRIVATE_STORAGE_DIR`, which is never served statically; swap `StorageService` for a private object storage bucket in production. A resubmission after a rejection keeps the old scans, marked superseded. The validation rules (CIN format, age 18+, unexpired card, Moroccan phone numbers) live in `packages/shared` so the web and mobile forms match the API.
+
+To create the first admin, sign up normally, then run:
+
+```bash
+pnpm --filter @sakan/api build
+pnpm --filter @sakan/api admin:promote you@example.com
+```
+
 ## Not built yet
 
-Authentication, user registration and CIN upload, admin endpoints, payment checkout and callbacks, and the admin dashboard screens. Paid draws may require authorisation in Morocco; check the legal requirements before launch.
+Payment checkout and callbacks, session management and draw screens in the admin dashboard, password reset and email or phone verification. Paid draws may require authorisation in Morocco; check the legal requirements before launch.

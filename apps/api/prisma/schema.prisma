@@ -45,17 +45,20 @@ model User {
   accountStatus      AccountStatus      @default(ACTIVE)
   verificationStatus VerificationStatus @default(UNSUBMITTED)
 
-  firstName   String?
-  lastName    String?
-  dateOfBirth DateTime? @db.Date
+  firstName    String?
+  lastName     String?
+  dateOfBirth  DateTime? @db.Date
   /// Moroccan National Identity Card number. Unique: one account per person.
-  cinNumber   String?   @unique
+  cinNumber    String?   @unique
   cinExpiresAt DateTime? @db.Date
 
-  verifiedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  /// When the current CIN details and scans were submitted for review.
+  identitySubmittedAt DateTime?
+  verifiedAt          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
+  authSessions      AuthSession[]
   identityDocuments IdentityDocument[]
   reviewsReceived   VerificationReview[] @relation("ReviewSubject")
   reviewsGiven      VerificationReview[] @relation("ReviewReviewer")
@@ -64,19 +67,38 @@ model User {
   sessionsCreated   DrawSession[]
   auditLogs         AuditLog[]
 
-  @@index([verificationStatus])
+  @@index([verificationStatus, identitySubmittedAt])
+}
+
+/// A signed-in device. The client holds the random token; only its SHA-256 is stored,
+/// so a database leak does not leak usable tokens. Revoked on logout and suspension.
+model AuthSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 /// A CIN scan stored in private object storage. Only the storage key is kept here.
+/// A resubmission supersedes the previous scans instead of deleting them, for the audit trail.
 model IdentityDocument {
-  id         String               @id @default(uuid()) @db.Uuid
-  userId     String               @db.Uuid
-  side       IdentityDocumentSide
-  storageKey String               @unique
-  mimeType   String
-  sizeBytes  Int
-  sha256     String
-  uploadedAt DateTime             @default(now())
+  id           String               @id @default(uuid()) @db.Uuid
+  userId       String               @db.Uuid
+  side         IdentityDocumentSide
+  storageKey   String               @unique
+  mimeType     String
+  sizeBytes    Int
+  sha256       String
+  uploadedAt   DateTime             @default(now())
+  supersededAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -116,19 +138,19 @@ model DrawSession {
   description String?
   status      SessionStatus @default(DRAFT)
 
-  entryPriceCents  Int
-  currency         String  @default("MAD")
-  targetEntries    Int
+  entryPriceCents   Int
+  currency          String  @default("MAD")
+  targetEntries     Int
   /// Count of entries backed by a confirmed payment. Updated in the same transaction as the entry.
-  confirmedEntries Int     @default(0)
+  confirmedEntries  Int     @default(0)
   /// When false, the session never accepts more than targetEntries.
-  allowOverfill    Boolean @default(false)
+  allowOverfill     Boolean @default(false)
   maxEntriesPerUser Int?
-  winnerCount      Int     @default(1)
+  winnerCount       Int     @default(1)
 
   /// Local time of day (HH:mm) the draw runs once the target is reached, e.g. "18:00".
-  drawTimeOfDay String  @default("18:00")
-  timezone      String  @default("Africa/Casablanca")
+  drawTimeOfDay String @default("18:00")
+  timezone      String @default("Africa/Casablanca")
 
   opensAt         DateTime?
   closesAt        DateTime?
@@ -157,14 +179,14 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id        String        @id @default(uuid()) @db.Uuid
+  id          String        @id @default(uuid()) @db.Uuid
   /// Human-readable unique reference shown to the user, e.g. PAY-7K3F9Q2M.
-  reference String        @unique
-  userId    String        @db.Uuid
-  sessionId String        @db.Uuid
+  reference   String        @unique
+  userId      String        @db.Uuid
+  sessionId   String        @db.Uuid
   amountCents Int
-  currency  String        @default("MAD")
-  status    PaymentStatus @default(PENDING)
+  currency    String        @default("MAD")
+  status      PaymentStatus @default(PENDING)
 
   provider              String
   providerTransactionId String?
@@ -235,8 +257,8 @@ model Draw {
   status      DrawStatus @default(SCHEDULED)
   scheduledAt DateTime
 
-  seedHash String
-  seed     String?
+  seedHash    String
+  seed        String?
   /// SHA-256 of the ordered list of eligible entry references at draw time.
   entriesHash String?
   entryCount  Int?
