@@ -11,6 +11,9 @@
   --border: #e3e6df;
   --ink: #3a3f45;
   --danger: #b3261e;
+  /* Seamless Moroccan tile: repeat it to fill a whole section. */
+  --pattern: url('/patterns/tile.png');
+  --pattern-size: 600px auto;
   --radius: 4px;
   --radius-sm: 2px;
   --shadow: 0 1px 3px rgba(40, 50, 30, 0.08);
@@ -89,17 +92,16 @@ button.link { font: inherit; background: none; border: 0; padding: 0; cursor: po
 
 /* Hero */
 .hero {
-  background: url('/patterns/vector.png') no-repeat left center / auto 100%, #fff;
+  background: var(--pattern) repeat top center / var(--pattern-size), #fff;
   border-bottom: 1px solid var(--border);
 }
-[dir='ltr'] .hero { background-position: right center; }
 .hero-inner { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: center; padding-block: 64px; }
 .hero h1 { font-size: clamp(1.7rem, 3.4vw, 2.5rem); margin: 0 0 16px; }
 .hero p { color: var(--muted); font-size: 1.08rem; margin: 0 0 28px; }
 .hero-actions { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
 .hero-visual {
   aspect-ratio: 4 / 3; border-radius: var(--radius); border: 6px solid var(--green); color: #fff;
-  background: url('/patterns/vector-v.png') center / cover, linear-gradient(135deg, var(--green), var(--green-deep));
+  background: var(--pattern) repeat center / 360px auto, linear-gradient(135deg, var(--green), var(--green-deep));
   display: grid; place-items: center; box-shadow: var(--shadow);
 }
 
@@ -107,9 +109,8 @@ button.link { font: inherit; background: none; border: 0; padding: 0; cursor: po
 .section { padding-block: 64px; }
 .section-title { text-align: center; color: var(--green-dark); font-size: clamp(1.4rem, 2.6vw, 2rem); margin: 0 0 36px; }
 .section-title.start { text-align: start; }
-.patterned { background: url('/patterns/vector-v.png') top center / 100% auto no-repeat, var(--surface); }
-.patterned-soft { background: url('/patterns/vector.png') no-repeat right bottom / 60% auto, #fff; }
-[dir='ltr'] .patterned-soft { background-position: left bottom; }
+.patterned { background: var(--pattern) repeat top center / var(--pattern-size), var(--surface); }
+.patterned-soft { background: var(--pattern) repeat top center / var(--pattern-size), #fff; }
 
 /* Steps */
 .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 28px 20px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
