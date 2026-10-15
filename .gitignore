@@ -7,4 +7,5 @@ next-env.d.ts
 .env.local
 coverage/
 apps/api/src/generated/
+apps/api/storage/
 .DS_Store

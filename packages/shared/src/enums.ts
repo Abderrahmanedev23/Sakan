@@ -21,6 +21,12 @@ export const AccountStatus = {
 } as const;
 export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus];
 
+export const IdentityDocumentSide = {
+  FRONT: 'FRONT',
+  BACK: 'BACK',
+} as const;
+export type IdentityDocumentSide = (typeof IdentityDocumentSide)[keyof typeof IdentityDocumentSide];
+
 export const SessionStatus = {
   DRAFT: 'DRAFT',
   OPEN: 'OPEN',
