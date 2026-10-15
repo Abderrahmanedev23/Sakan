@@ -1,0 +1,283 @@
+// Sakan data model.
+// Money is stored as integer minor units (centimes) to avoid float rounding.
+// Enums are mirrored in packages/shared/src/enums.ts for clients.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Users & identity verification ───────────────────────────────────────────
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  UNSUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum IdentityDocumentSide {
+  FRONT
+  BACK
+}
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  email              String             @unique
+  phone              String?            @unique
+  passwordHash       String
+  role               UserRole           @default(USER)
+  accountStatus      AccountStatus      @default(ACTIVE)
+  verificationStatus VerificationStatus @default(UNSUBMITTED)
+
+  firstName   String?
+  lastName    String?
+  dateOfBirth DateTime? @db.Date
+  /// Moroccan National Identity Card number. Unique: one account per person.
+  cinNumber   String?   @unique
+  cinExpiresAt DateTime? @db.Date
+
+  verifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  identityDocuments IdentityDocument[]
+  reviewsReceived   VerificationReview[] @relation("ReviewSubject")
+  reviewsGiven      VerificationReview[] @relation("ReviewReviewer")
+  payments          Payment[]
+  entries           Entry[]
+  sessionsCreated   DrawSession[]
+  auditLogs         AuditLog[]
+
+  @@index([verificationStatus])
+}
+
+/// A CIN scan stored in private object storage. Only the storage key is kept here.
+model IdentityDocument {
+  id         String               @id @default(uuid()) @db.Uuid
+  userId     String               @db.Uuid
+  side       IdentityDocumentSide
+  storageKey String               @unique
+  mimeType   String
+  sizeBytes  Int
+  sha256     String
+  uploadedAt DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Append-only history of admin approval / rejection decisions.
+model VerificationReview {
+  id         String             @id @default(uuid()) @db.Uuid
+  userId     String             @db.Uuid
+  reviewerId String             @db.Uuid
+  decision   VerificationStatus
+  reason     String?
+  createdAt  DateTime           @default(now())
+
+  user     User @relation("ReviewSubject", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+
+  @@index([userId])
+}
+
+// ─── Draw sessions ───────────────────────────────────────────────────────────
+
+enum SessionStatus {
+  DRAFT
+  OPEN
+  PAUSED
+  FULL
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model DrawSession {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  status      SessionStatus @default(DRAFT)
+
+  entryPriceCents  Int
+  currency         String  @default("MAD")
+  targetEntries    Int
+  /// Count of entries backed by a confirmed payment. Updated in the same transaction as the entry.
+  confirmedEntries Int     @default(0)
+  /// When false, the session never accepts more than targetEntries.
+  allowOverfill    Boolean @default(false)
+  maxEntriesPerUser Int?
+  winnerCount      Int     @default(1)
+
+  /// Local time of day (HH:mm) the draw runs once the target is reached, e.g. "18:00".
+  drawTimeOfDay String  @default("18:00")
+  timezone      String  @default("Africa/Casablanca")
+
+  opensAt         DateTime?
+  closesAt        DateTime?
+  filledAt        DateTime?
+  drawScheduledAt DateTime?
+
+  createdById String   @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User      @relation(fields: [createdById], references: [id])
+  payments  Payment[]
+  entries   Entry[]
+  draw      Draw?
+
+  @@index([status])
+}
+
+// ─── Payments & entries ──────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id        String        @id @default(uuid()) @db.Uuid
+  /// Human-readable unique reference shown to the user, e.g. PAY-7K3F9Q2M.
+  reference String        @unique
+  userId    String        @db.Uuid
+  sessionId String        @db.Uuid
+  amountCents Int
+  currency  String        @default("MAD")
+  status    PaymentStatus @default(PENDING)
+
+  provider              String
+  providerTransactionId String?
+  /// Client-supplied key so a retried request never creates a second payment.
+  idempotencyKey        String  @unique
+  failureReason         String?
+  /// Raw provider callback payload, kept for disputes.
+  providerPayload       Json?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  confirmedAt DateTime?
+  refundedAt  DateTime?
+
+  user    User        @relation(fields: [userId], references: [id])
+  session DrawSession @relation(fields: [sessionId], references: [id])
+  entry   Entry?
+
+  /// The same provider transaction can never be processed twice.
+  @@unique([provider, providerTransactionId])
+  @@index([sessionId, status])
+  @@index([userId])
+}
+
+enum EntryStatus {
+  ACTIVE
+  VOID
+}
+
+/// One participation in a session. Created only from a succeeded payment.
+model Entry {
+  id        String      @id @default(uuid()) @db.Uuid
+  /// Public unique reference, e.g. SKN-0001-002917.
+  reference String      @unique
+  sessionId String      @db.Uuid
+  userId    String      @db.Uuid
+  paymentId String      @unique @db.Uuid
+  /// 1-based position within the session; the draw picks a sequence number.
+  sequence  Int
+  status    EntryStatus @default(ACTIVE)
+  createdAt DateTime    @default(now())
+
+  session DrawSession  @relation(fields: [sessionId], references: [id])
+  user    User         @relation(fields: [userId], references: [id])
+  payment Payment      @relation(fields: [paymentId], references: [id])
+  wins    DrawWinner[]
+
+  @@unique([sessionId, sequence])
+  @@index([userId])
+}
+
+// ─── Draws ───────────────────────────────────────────────────────────────────
+
+enum DrawStatus {
+  SCHEDULED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// The single official draw of a session (sessionId is unique).
+/// Uses commit-reveal: seedHash is published when the draw is scheduled.
+/// seed is stored at the same time but must only be exposed once the draw is
+/// COMPLETED, so anyone can then recompute the winner.
+model Draw {
+  id          String     @id @default(uuid()) @db.Uuid
+  sessionId   String     @unique @db.Uuid
+  status      DrawStatus @default(SCHEDULED)
+  scheduledAt DateTime
+
+  seedHash String
+  seed     String?
+  /// SHA-256 of the ordered list of eligible entry references at draw time.
+  entriesHash String?
+  entryCount  Int?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  session DrawSession  @relation(fields: [sessionId], references: [id])
+  winners DrawWinner[]
+}
+
+model DrawWinner {
+  id       String @id @default(uuid()) @db.Uuid
+  drawId   String @db.Uuid
+  entryId  String @db.Uuid
+  /// 1 for the first prize, 2 for the second, ...
+  position Int
+
+  draw  Draw  @relation(fields: [drawId], references: [id])
+  entry Entry @relation(fields: [entryId], references: [id])
+
+  @@unique([drawId, position])
+  @@unique([drawId, entryId])
+}
+
+// ─── Audit ───────────────────────────────────────────────────────────────────
+
+/// Append-only log of important operations. Never updated or deleted by the app.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
