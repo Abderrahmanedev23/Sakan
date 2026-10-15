@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+**/.env
+**/.env.local
+apps/api/src/generated
+apps/api/storage
+.git
+.github
+docs
+*.md

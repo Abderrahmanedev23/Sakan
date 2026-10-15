@@ -1,0 +1,77 @@
+# Sakan with Docker only: no source code, no build. Put this file in an empty folder and run
+#   docker compose up -d
+# then open http://localhost:3000. The first start pulls the images, creates the database,
+# applies the migrations and loads the demo accounts; later starts keep your data.
+# Stop with `docker compose down`; `docker compose down -v` also deletes all data.
+name: sakan
+
+services:
+  web:
+    image: ${SAKAN_WEB_IMAGE:-ghcr.io/abderrahmanedev23/sakan-web:latest}
+    restart: unless-stopped
+    ports:
+      - "${SAKAN_PORT:-3000}:3000"
+    environment:
+      API_INTERNAL_URL: http://api:3001/api/v1
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    image: ${SAKAN_API_IMAGE:-ghcr.io/abderrahmanedev23/sakan-api:latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql://sakan:sakan@mysql:3306/sakan
+      REDIS_URL: redis://redis:6379
+      # The browser reaches the API through the web container, on the same address as the site.
+      CORS_ORIGINS: http://localhost:${SAKAN_PORT:-3000}
+      # Where the simulated payment page sends people back to. Change it if you open the site
+      # from another address (e.g. http://192.168.1.20:3000 from a phone).
+      WEB_URL: ${SAKAN_WEB_URL:-http://localhost:3000}
+      TRUST_PROXY: "1"
+      PAYMENT_PROVIDER: stub
+      PAYMENT_STUB_SECRET: local-docker-stub-secret
+      AUTH_SESSION_TTL_DAYS: "30"
+      STORAGE_DRIVER: local
+      PRIVATE_STORAGE_DIR: /data/private
+      # Demo accounts and sessions, loaded only into an empty database. Set to "false" to start empty.
+      SEED_DEMO_DATA: ${SAKAN_SEED_DEMO_DATA:-true}
+    volumes:
+      - cin-uploads:/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: sakan-root
+      MYSQL_DATABASE: sakan
+      MYSQL_USER: sakan
+      MYSQL_PASSWORD: sakan
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-usakan", "-psakan"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+volumes:
+  mysql-data:
+  redis-data:
+  cin-uploads:
