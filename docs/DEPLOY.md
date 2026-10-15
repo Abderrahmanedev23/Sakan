@@ -6,7 +6,7 @@ This puts Sakan online for testing at no cost:
 | --- | --- | --- |
 | Website (`apps/web`) | Vercel Hobby | Non-commercial use only. |
 | API (`apps/api`) | Render free web service | 512 MB RAM, 750 hours a month, sleeps after 15 minutes without traffic, disk wiped on restart. |
-| Database | Neon free | 0.5 GB storage, 100 compute hours a month, pauses after 5 idle minutes. |
+| Database (MySQL 8) | Aiven free | 1 GB storage, 1 CPU, 1 GB RAM, no card needed; one free MySQL per account; may be powered off after a long time unused (you get an email first and can power it back on). |
 | Redis (draw scheduling) | Upstash free | 256 MB, 500,000 commands a month. |
 | CIN scans | Supabase Storage | 1 GB free, no card needed; the project pauses after 7 days without activity. |
 
@@ -18,11 +18,17 @@ Free plans change often. Check each pricing page when you sign up.
 - **Draws run late if the API is asleep.** A draw scheduled for 18:00 runs as soon as the API wakes up, not at 18:00. For tests, open the site a few minutes before draw time. To keep it awake, a free pinger such as cron-job.org can call `https://<your-api>.onrender.com/api/v1/health` every 10 minutes; one service running all month (about 744 hours) fits in the 750 free hours.
 - **Not for real users or real money.** Vercel's free plan forbids commercial use, and the free database is small. Move to paid plans before launch.
 
-## 1. Database: Neon
+## 1. Database: Aiven for MySQL
 
-1. Sign up at [neon.com](https://neon.com) and create a project named `sakan`. Pick the region **AWS Europe Central (Frankfurt)**.
-2. On the project dashboard click **Connect**. Turn **Connection pooling off**, then copy the connection string. It looks like `postgresql://neondb_owner:...@ep-....eu-central-1.aws.neon.tech/neondb?sslmode=require`.
-3. Keep it for step 4 as `DATABASE_URL`.
+1. Sign up at [aiven.io](https://aiven.io) (no card needed) and create a service: **MySQL**, plan **Free**. If it offers a choice of region, take the one closest to Frankfurt, where the API runs. Name it `sakan`.
+2. Wait until the service shows **Running**, then copy the **Service URI** from its **Overview** page. It looks like `mysql://avnadmin:...@sakan-yourname.d.aivencloud.com:12345/defaultdb?ssl-mode=REQUIRED`.
+3. Replace the end, `?ssl-mode=REQUIRED`, with `?sslaccept=accept_invalid_certs`. That is the spelling Prisma understands; the connection is still encrypted, but Aiven signs it with its own certificate authority, which this setting does not check. Fine for a test; for launch, pin Aiven's CA certificate.
+
+   ```
+   mysql://avnadmin:...@sakan-yourname.d.aivencloud.com:12345/defaultdb?sslaccept=accept_invalid_certs
+   ```
+
+4. Keep it for step 4 as `DATABASE_URL`. Sakan's tables go in `defaultdb`; nothing else is needed.
 
 ## 2. Redis: Upstash
 
@@ -32,7 +38,7 @@ Free plans change often. Check each pricing page when you sign up.
 
 ## 3. CIN scans: Supabase Storage
 
-Render's free plan wipes its disk on every restart, so CIN scans are kept in a private bucket instead. Only Supabase's file storage is used here; the database stays on Neon.
+Render's free plan wipes its disk on every restart, so CIN scans are kept in a private bucket instead. Only Supabase's file storage is used here; the database stays on Aiven.
 
 1. Sign up at [supabase.com](https://supabase.com) and create a project named `sakan`. Pick the region **Central EU (Frankfurt)**. It asks for a database password; save it somewhere, Sakan does not use it.
 2. Open **Storage** and click **New bucket**. Name it `cin-scans` and leave **Public bucket** turned **off**.
@@ -117,10 +123,17 @@ Vercel preview links (one per branch) have other addresses and are blocked by CO
 ## 7. Make yourself admin
 
 1. Sign up on your site.
-2. In Neon, open **SQL Editor** and run, with your email:
+2. On your computer, in your copy of the repository (after `pnpm install` and `pnpm build`), run the promote script against the Aiven database, with your Aiven URL and your email:
+
+   ```bash
+   DATABASE_URL='mysql://avnadmin:...@...aivencloud.com:12345/defaultdb?sslaccept=accept_invalid_certs' \
+     pnpm --filter @sakan/api admin:promote you@example.com
+   ```
+
+   Or, from any MySQL client connected to Aiven (MySQL Workbench, DBeaver, `mysql`):
 
    ```sql
-   UPDATE "User" SET role = 'ADMIN' WHERE email = 'you@example.com';
+   UPDATE `User` SET role = 'ADMIN' WHERE email = 'you@example.com';
    ```
 
 3. Sign out and back in. The admin menu appears.
@@ -129,6 +142,6 @@ Vercel preview links (one per branch) have other addresses and are blocked by CO
 
 - **The site says the server is not reachable.** The API is waking up; wait a minute. If it persists, open the API's **Logs** on Render.
 - **"blocked by CORS" in the browser console.** `CORS_ORIGINS` on Render must match the site address exactly, with `https://` and no trailing slash.
-- **The Render build fails on the database.** Check that `DATABASE_URL` is the Neon string with pooling **off**.
+- **The API fails to start with a database error.** Check that `DATABASE_URL` starts with `mysql://`, ends with `?sslaccept=accept_invalid_certs`, and that the Aiven service is **Running** (power it on from the Aiven console if it was switched off).
 - **CIN upload fails.** Check the five `S3_...` values, that the bucket name matches, and that the Supabase project is not paused.
 - **Upstash says the command limit is reached.** The API polls Redis gently (about every 5 minutes while idle) to stay under the free limit, but a pinger keeping the API awake all month uses part of it. Check usage on the Upstash dashboard.

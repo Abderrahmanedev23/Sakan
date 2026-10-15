@@ -29,7 +29,7 @@ services:
         value: "30"
       - key: STORAGE_DRIVER
         value: s3
-      # Neon: the direct (not "pooled") connection string.
+      # Aiven MySQL: the Service URI with ?ssl-mode=REQUIRED replaced by ?sslaccept=accept_invalid_certs.
       - key: DATABASE_URL
         sync: false
       # Upstash: the rediss:// URL.

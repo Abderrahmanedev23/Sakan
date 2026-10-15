@@ -427,9 +427,9 @@ export class PaymentsService {
       sessionId: query.sessionId,
       OR: q
         ? [
-            { reference: { contains: q, mode: 'insensitive' } },
-            { user: { email: { contains: q, mode: 'insensitive' } } },
-            { entry: { reference: { contains: q, mode: 'insensitive' } } },
+            { reference: { contains: q } },
+            { user: { email: { contains: q } } },
+            { entry: { reference: { contains: q } } },
           ]
         : undefined,
     };
