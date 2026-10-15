@@ -1,11 +1,6 @@
 import type { ReactNode } from 'react';
-import { AdminNav } from '@/components/admin-nav';
+import { AppShell } from '@/components/app-shell';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <AdminNav />
-      {children}
-    </>
-  );
+  return <AppShell>{children}</AppShell>;
 }
