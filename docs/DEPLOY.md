@@ -8,7 +8,7 @@ This puts Sakan online for testing at no cost:
 | API (`apps/api`) | Render free web service | 512 MB RAM, 750 hours a month, sleeps after 15 minutes without traffic, disk wiped on restart. |
 | Database | Neon free | 0.5 GB storage, 100 compute hours a month, pauses after 5 idle minutes. |
 | Redis (draw scheduling) | Upstash free | 256 MB, 500,000 commands a month. |
-| CIN scans | Backblaze B2 | 10 GB free, no card needed. |
+| CIN scans | Supabase Storage | 1 GB free, no card needed; the project pauses after 7 days without activity. |
 
 Free plans change often. Check each pricing page when you sign up.
 
@@ -30,22 +30,24 @@ Free plans change often. Check each pricing page when you sign up.
 2. On the database page, find the connection URL that starts with `rediss://` (the **TCP** / ioredis one, not the REST URL). It looks like `rediss://default:...@....upstash.io:6379`.
 3. Keep it for step 4 as `REDIS_URL`.
 
-## 3. CIN scans: Backblaze B2
+## 3. CIN scans: Supabase Storage
 
-Render's free plan wipes its disk on every restart, so CIN scans are kept in a private bucket instead.
+Render's free plan wipes its disk on every restart, so CIN scans are kept in a private bucket instead. Only Supabase's file storage is used here; the database stays on Neon.
 
-1. Sign up at [backblaze.com](https://www.backblaze.com/sign-up/cloud-storage). Choose the **EU Central** region if it asks.
-2. **Buckets → Create a Bucket.** Name it something unique, like `sakan-cin-yourname`. Set **Files in Bucket** to **Private**. Leave encryption on if offered.
-3. Copy the bucket's **Endpoint**, for example `s3.eu-central-003.backblazeb2.com`. The region is the part after `s3.`, here `eu-central-003`.
-4. **Application Keys → Add a New Application Key.** Allow access to that bucket only, with **Read and Write**. Copy the **keyID** and **applicationKey** right away; the second one is shown only once.
+1. Sign up at [supabase.com](https://supabase.com) and create a project named `sakan`. Pick the region **Central EU (Frankfurt)**. It asks for a database password; save it somewhere, Sakan does not use it.
+2. Open **Storage** and click **New bucket**. Name it `cin-scans` and leave **Public bucket** turned **off**.
+3. Still in **Storage**, open its **Settings** (the S3 section, called **S3 Connection** or **S3 Configuration**). Make sure the S3 connection is enabled, then copy the **Endpoint** and **Region** shown there.
+4. In the same place, under **Access keys**, click **New access key**. Copy the **Access key ID** and **Secret access key** right away; the secret is shown only once.
 5. Keep for step 4:
-   - `S3_ENDPOINT` = `https://` + the endpoint, e.g. `https://s3.eu-central-003.backblazeb2.com`
-   - `S3_REGION` = the region, e.g. `eu-central-003`
-   - `S3_BUCKET` = the bucket name
-   - `S3_ACCESS_KEY_ID` = keyID
-   - `S3_SECRET_ACCESS_KEY` = applicationKey
+   - `S3_ENDPOINT` = the endpoint, like `https://abcdefgh.storage.supabase.co/storage/v1/s3`
+   - `S3_REGION` = the region, like `eu-central-1`
+   - `S3_BUCKET` = `cin-scans`
+   - `S3_ACCESS_KEY_ID` = Access key ID
+   - `S3_SECRET_ACCESS_KEY` = Secret access key
 
-Cloudflare R2 works the same way if you prefer it (endpoint `https://<account-id>.r2.cloudflarestorage.com`, region `auto`), but it asks for a payment card.
+These keys can read and write every bucket in that Supabase project, so only paste them into Render.
+
+Supabase pauses a free project after 7 days without activity. If that happens, CIN uploads and admin views fail until you click **Restore** on the project in the Supabase dashboard; nothing is deleted.
 
 ## 4. API: Render
 
@@ -93,5 +95,5 @@ Vercel preview links (one per branch) have other addresses and are blocked by CO
 - **The site says the server is not reachable.** The API is waking up; wait a minute. If it persists, open the API's **Logs** on Render.
 - **"blocked by CORS" in the browser console.** `CORS_ORIGINS` on Render must match the site address exactly, with `https://` and no trailing slash.
 - **The Render build fails on the database.** Check that `DATABASE_URL` is the Neon string with pooling **off**.
-- **CIN upload fails.** Check the five `S3_...` values and that the B2 key can read and write that bucket.
+- **CIN upload fails.** Check the five `S3_...` values, that the bucket name matches, and that the Supabase project is not paused.
 - **Upstash says the command limit is reached.** The API polls Redis gently (about every 5 minutes while idle) to stay under the free limit, but a pinger keeping the API awake all month uses part of it. Check usage on the Upstash dashboard.

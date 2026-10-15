@@ -96,7 +96,7 @@ pnpm --filter @sakan/api admin:promote you@example.com
 
 ## Deploying
 
-[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through a free test deployment: web on Vercel, API on Render, PostgreSQL on Neon, Redis on Upstash and CIN scans on Backblaze B2.
+[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through a free test deployment: web on Vercel, API on Render, PostgreSQL on Neon, Redis on Upstash and CIN scans on Supabase Storage.
 
 ## Not built yet
 
