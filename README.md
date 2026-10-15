@@ -85,7 +85,7 @@ Clients send `Authorization: Bearer <token>`, which works the same for the web a
 | `POST /admin/users/:id/suspend` / `reactivate` | admin | Suspension needs `{ reason }` and signs the user out everywhere. |
 | `GET /admin/identity-documents/:id/file` | admin | Streams a CIN scan. Every view is audit logged. |
 
-CIN scans are checked by their content (JPEG, PNG or WebP, 5 MB max) and written to `PRIVATE_STORAGE_DIR`, which is never served statically; swap `StorageService` for a private object storage bucket in production. A resubmission after a rejection keeps the old scans, marked superseded. The validation rules (CIN format, age 18+, unexpired card, Moroccan phone numbers) live in `packages/shared` so the web and mobile forms match the API.
+CIN scans are checked by their content (JPEG, PNG or WebP, 5 MB max) and stored privately and never served statically: in `PRIVATE_STORAGE_DIR` by default, or in a private S3-compatible bucket with `STORAGE_DRIVER=s3` (see `apps/api/.env.example`). A resubmission after a rejection keeps the old scans, marked superseded. The validation rules (CIN format, age 18+, unexpired card, Moroccan phone numbers) live in `packages/shared` so the web and mobile forms match the API.
 
 To create the first admin, sign up normally, then run:
 
@@ -93,6 +93,10 @@ To create the first admin, sign up normally, then run:
 pnpm --filter @sakan/api build
 pnpm --filter @sakan/api admin:promote you@example.com
 ```
+
+## Deploying
+
+[`docs/DEPLOY.md`](docs/DEPLOY.md) walks through a free test deployment: web on Vercel, API on Render, PostgreSQL on Neon, Redis on Upstash and CIN scans on Backblaze B2.
 
 ## Not built yet
 

@@ -1,23 +1,64 @@
-import { Injectable } from '@nestjs/common';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createReadStream } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 
+interface StorageBackend {
+  put(key: string, data: Buffer): Promise<void>;
+  read(key: string): Promise<Readable>;
+  delete(key: string): Promise<void>;
+}
+
 /**
  * Private file storage for sensitive uploads (CIN scans). Files are never served
  * statically: they are only read back through admin-only endpoints.
  *
- * This implementation writes to a local directory outside any public path. A cloud
- * object store (S3, GCS, R2 with a private bucket) can replace it behind the same methods.
+ * STORAGE_DRIVER picks the backend:
+ * - `local` (default) writes to PRIVATE_STORAGE_DIR. Fine on a machine with a persistent disk,
+ *   but hosts with an ephemeral disk (Render's free plan) lose the files on every restart.
+ * - `s3` writes to a private bucket on any S3-compatible store (Cloudflare R2, Backblaze B2, AWS S3).
  */
 @Injectable()
-export class StorageService {
-  private readonly root: string;
+export class StorageService implements StorageBackend {
+  private readonly backend: StorageBackend;
 
   constructor(config: ConfigService) {
-    this.root = resolve(config.get<string>('PRIVATE_STORAGE_DIR', 'storage/private'));
+    const driver = config.get<string>('STORAGE_DRIVER', 'local');
+    if (driver === 's3') {
+      this.backend = new S3Storage(config);
+    } else if (driver === 'local') {
+      this.backend = new LocalStorage(config.get<string>('PRIVATE_STORAGE_DIR', 'storage/private'));
+      if (config.get<string>('NODE_ENV') === 'production') {
+        new Logger(StorageService.name).warn(
+          'STORAGE_DRIVER=local in production: CIN scans are lost if the server disk is ephemeral.',
+        );
+      }
+    } else {
+      throw new Error(`Unknown STORAGE_DRIVER: ${driver}`);
+    }
+  }
+
+  put(key: string, data: Buffer): Promise<void> {
+    return this.backend.put(key, data);
+  }
+
+  read(key: string): Promise<Readable> {
+    return this.backend.read(key);
+  }
+
+  delete(key: string): Promise<void> {
+    return this.backend.delete(key);
+  }
+}
+
+class LocalStorage implements StorageBackend {
+  private readonly root: string;
+
+  constructor(dir: string) {
+    this.root = resolve(dir);
   }
 
   async put(key: string, data: Buffer): Promise<void> {
@@ -26,7 +67,7 @@ export class StorageService {
     await writeFile(path, data, { mode: 0o600, flag: 'wx' });
   }
 
-  read(key: string): Readable {
+  async read(key: string): Promise<Readable> {
     return createReadStream(this.pathFor(key));
   }
 
@@ -39,5 +80,39 @@ export class StorageService {
     const path = resolve(this.root, key);
     if (!path.startsWith(this.root + sep)) throw new Error(`Invalid storage key: ${key}`);
     return path;
+  }
+}
+
+class S3Storage implements StorageBackend {
+  private readonly client: S3Client;
+  private readonly bucket: string;
+
+  constructor(config: ConfigService) {
+    this.bucket = config.getOrThrow<string>('S3_BUCKET');
+    this.client = new S3Client({
+      endpoint: config.get<string>('S3_ENDPOINT') || undefined,
+      region: config.get<string>('S3_REGION', 'auto'),
+      forcePathStyle: config.get<string>('S3_FORCE_PATH_STYLE') === 'true',
+      // Only send checksums S3 requires: not every S3-compatible store accepts the SDK's newer defaults.
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+      responseChecksumValidation: 'WHEN_REQUIRED',
+      credentials: {
+        accessKeyId: config.getOrThrow<string>('S3_ACCESS_KEY_ID'),
+        secretAccessKey: config.getOrThrow<string>('S3_SECRET_ACCESS_KEY'),
+      },
+    });
+  }
+
+  async put(key: string, data: Buffer): Promise<void> {
+    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: data }));
+  }
+
+  async read(key: string): Promise<Readable> {
+    const res = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    return res.Body as Readable;
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 }
