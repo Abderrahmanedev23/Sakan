@@ -13,7 +13,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "admin:promote": "node dist/scripts/promote-admin.js"
+    "admin:promote": "node dist/scripts/promote-admin.js",
+    "seed": "node dist/scripts/seed.js",
+    "seed:reset": "node dist/scripts/seed.js --reset"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1152.0",

@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const response = await api.login({ email: String(form.get('email')), password: String(form.get('password')) });
       signIn(response);
-      router.push(response.user.role === 'ADMIN' ? '/admin' : '/profile');
+      router.push(response.user.role === 'ADMIN' ? '/admin/sessions' : '/profile');
     } catch (err) {
       setError(err instanceof ApiError ? err : new ApiError(0, t['common.error']));
     } finally {

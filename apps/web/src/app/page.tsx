@@ -1,7 +1,7 @@
 import type { PublicSession } from '@sakan/shared';
 import Link from 'next/link';
+import { SessionCard } from '@/components/session-card';
 import { api } from '@/lib/api';
-import { formatDateTime, intlLocale } from '@/lib/i18n';
 import { getDictionary } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -20,16 +20,12 @@ const STEP_ICONS = [
   <path key="3" d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8" />,
 ];
 
-function formatPrice(cents: number, currency: string, locale: string) {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(cents / 100);
-}
-
 export default async function HomePage() {
-  const { locale, t } = await getDictionary();
+  const { t } = await getDictionary();
   let sessions: PublicSession[] = [];
   let error: string | null = null;
   try {
-    sessions = await api.listSessions();
+    sessions = await api.listSessions('active');
   } catch {
     error = t['sessions.apiDown'];
   }
@@ -79,21 +75,13 @@ export default async function HomePage() {
           {error && <p className="muted center">{error}</p>}
           {!error && sessions.length === 0 && <p className="muted center">{t['sessions.empty']}</p>}
           <div className="grid">
-            {sessions.map((s) => {
-              const pct = Math.min(100, (s.confirmedEntries / s.targetEntries) * 100);
-              return (
-                <article key={s.id} className="card session-card">
-                  <h3>{s.name}</h3>
-                  <p className="muted">
-                    {s.status} · {t['sessions.perEntry'](formatPrice(s.entryPriceCents, s.currency, intlLocale(locale)))}
-                  </p>
-                  <div className="progress"><div style={{ width: `${pct}%` }} /></div>
-                  <p>{t['sessions.entries'](s.confirmedEntries, s.targetEntries)}</p>
-                  {s.drawScheduledAt && <p>{t['sessions.draw'](formatDateTime(s.drawScheduledAt, locale))}</p>}
-                </article>
-              );
-            })}
+            {sessions.map((s) => (
+              <SessionCard key={s.id} session={s} />
+            ))}
           </div>
+          <p className="center">
+            <Link href="/results" className="text-link">{t['sessions.resultsLink']}</Link>
+          </p>
         </div>
       </section>
 
