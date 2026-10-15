@@ -167,6 +167,7 @@ const ar = {
   'admin.imageError': 'تعذّر تحميل الصورة.',
   'nav.results': 'النتائج',
   'nav.participations': 'مشاركاتي',
+  'nav.menu': 'القائمة',
 
   'common.back': 'رجوع',
   'common.save': 'حفظ',
@@ -508,6 +509,7 @@ const fr: Dictionary = {
   'admin.imageError': "Impossible de charger l'image.",
   'nav.results': 'Résultats',
   'nav.participations': 'Mes participations',
+  'nav.menu': 'Menu',
 
   'common.back': 'Retour',
   'common.save': 'Enregistrer',

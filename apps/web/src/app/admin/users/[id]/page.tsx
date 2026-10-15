@@ -66,7 +66,7 @@ function UserReview({ token, id }: { token: string; id: string }) {
         <StatusBadge status={user.verificationStatus} /> <StatusBadge status={user.accountStatus} />
       </p>
 
-      <div className="grid">
+      <div className="review-grid">
         <div className="card">
           <h2>{t['admin.details']}</h2>
           <dl className="details">
