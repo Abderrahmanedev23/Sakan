@@ -205,6 +205,6 @@ export class AdminUsersService {
       metadata: { documentId: doc.id, side: doc.side },
       ipAddress,
     });
-    return { stream: this.storage.read(doc.storageKey), mimeType: doc.mimeType, sizeBytes: doc.sizeBytes };
+    return { stream: await this.storage.read(doc.storageKey), mimeType: doc.mimeType, sizeBytes: doc.sizeBytes };
   }
 }

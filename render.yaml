@@ -1,0 +1,50 @@
+# Render Blueprint for the Sakan API (free plan).
+# Render creates the service from this file; values marked "sync: false" are asked for
+# in the dashboard when the Blueprint is first applied. See docs/DEPLOY.md.
+services:
+  - type: web
+    name: sakan-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: corepack pnpm install --frozen-lockfile --prod=false && corepack pnpm --filter "@sakan/api..." build
+    # The free plan has no pre-deploy step, so migrations run when the server starts.
+    startCommand: corepack pnpm --filter @sakan/api start:prod
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: COREPACK_ENABLE_DOWNLOAD_PROMPT
+        value: "0"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: PAYMENT_PROVIDER
+        value: stub
+      - key: AUTH_SESSION_TTL_DAYS
+        value: "30"
+      - key: STORAGE_DRIVER
+        value: s3
+      # Neon: the direct (not "pooled") connection string.
+      - key: DATABASE_URL
+        sync: false
+      # Upstash: the rediss:// URL.
+      - key: REDIS_URL
+        sync: false
+      # The Vercel address of the web app, e.g. https://sakan.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+      # CIN scans: a private Backblaze B2 (or Cloudflare R2) bucket.
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
