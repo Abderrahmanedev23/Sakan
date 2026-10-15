@@ -25,7 +25,7 @@ export function formatDateTime(value: string | Date, locale: Locale): string {
 const ar = {
   'meta.description': 'منصة سحوبات جماعية شفافة',
   'brand.tagline': 'سحوبات جماعية شفافة',
-  'lang.switch': 'Français',
+  'lang.name': 'العربية',
   'lang.label': 'اللغة',
 
   'nav.home': 'الرئيسية',
@@ -282,6 +282,14 @@ const ar = {
   'admin.nav.audit': 'سجل التدقيق',
 
   'adminS.title': 'جلسات السحب',
+  'adminS.attention.title': 'يحتاج إلى انتباهك',
+  'adminS.attention.pending': 'هويات تنتظر المراجعة',
+  'adminS.attention.drawErrors': 'سحوبات فشلت وتحتاج إلى إعادة',
+  'adminS.attention.none': 'لا شيء يحتاج إلى انتباهك حاليًا.',
+  'adminS.attention.review': 'مراجعة',
+  'adminS.upcoming.title': 'السحوبات القادمة',
+  'adminS.upcoming.none': 'لا يوجد سحب مبرمج.',
+  'adminS.sessions': 'كل الجلسات',
   'adminS.new': 'جلسة جديدة',
   'adminS.stats.pendingVerifications': 'هويات في الانتظار',
   'adminS.stats.approvedUsers': 'مشاركون موثَّقون',
@@ -365,7 +373,7 @@ export type Dictionary = typeof ar;
 const fr: Dictionary = {
   'meta.description': 'Plateforme de tirages au sort communautaires transparents',
   'brand.tagline': 'Tirages communautaires transparents',
-  'lang.switch': 'العربية',
+  'lang.name': 'Français',
   'lang.label': 'Langue',
 
   'nav.home': 'Accueil',
@@ -624,6 +632,14 @@ const fr: Dictionary = {
   'admin.nav.audit': "Journal d'audit",
 
   'adminS.title': 'Sessions de tirage',
+  'adminS.attention.title': 'À traiter',
+  'adminS.attention.pending': 'Identités en attente de vérification',
+  'adminS.attention.drawErrors': 'Tirages en échec à relancer',
+  'adminS.attention.none': 'Rien à traiter pour le moment.',
+  'adminS.attention.review': 'Vérifier',
+  'adminS.upcoming.title': 'Prochains tirages',
+  'adminS.upcoming.none': 'Aucun tirage programmé.',
+  'adminS.sessions': 'Toutes les sessions',
   'adminS.new': 'Nouvelle session',
   'adminS.stats.pendingVerifications': 'Identités à examiner',
   'adminS.stats.approvedUsers': 'Participants vérifiés',
