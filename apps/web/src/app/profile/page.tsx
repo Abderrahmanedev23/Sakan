@@ -42,6 +42,12 @@ export default function ProfilePage() {
           )}
         </p>
         <p className="muted">{t[`profile.status.${user.verificationStatus}`]}</p>
+        {user.verificationStatus === 'APPROVED' && user.role !== 'ADMIN' && (
+          <p className="actions inline">
+            <Link href="/#sessions" className="button small">{t['hero.secondary']}</Link>
+            <Link href="/participations" className="text-link">{t['nav.participations']}</Link>
+          </p>
+        )}
         {user.rejectionReason && (
           <p className="notice">
             <strong>{t['profile.reason']}</strong> {user.rejectionReason}

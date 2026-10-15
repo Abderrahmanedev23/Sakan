@@ -134,6 +134,8 @@ enum SessionStatus {
 
 model DrawSession {
   id          String        @id @default(uuid()) @db.Uuid
+  /// Short public number used in entry references, e.g. 1 → SKN-0001-000042.
+  number      Int           @unique @default(autoincrement())
   name        String
   description String?
   status      SessionStatus @default(DRAFT)
@@ -151,6 +153,8 @@ model DrawSession {
   /// Local time of day (HH:mm) the draw runs once the target is reached, e.g. "18:00".
   drawTimeOfDay String @default("18:00")
   timezone      String @default("Africa/Casablanca")
+  /// When set, the draw runs this many minutes after the session fills instead of at drawTimeOfDay.
+  drawDelayMinutes Int?
 
   opensAt         DateTime?
   closesAt        DateTime?
@@ -193,6 +197,10 @@ model Payment {
   /// Client-supplied key so a retried request never creates a second payment.
   idempotencyKey        String  @unique
   failureReason         String?
+  /// Where the client sends the user to pay; returned again when a request is retried.
+  checkoutUrl           String?
+  /// A PENDING payment holds a place in the session until this time.
+  expiresAt             DateTime?
   /// Raw provider callback payload, kept for disputes.
   providerPayload       Json?
 
@@ -209,6 +217,7 @@ model Payment {
   @@unique([provider, providerTransactionId])
   @@index([sessionId, status])
   @@index([userId])
+  @@index([status, expiresAt])
 }
 
 enum EntryStatus {
@@ -245,6 +254,7 @@ enum DrawStatus {
   RUNNING
   COMPLETED
   FAILED
+  CANCELLED
 }
 
 /// The single official draw of a session (sessionId is unique).
@@ -265,6 +275,8 @@ model Draw {
 
   startedAt   DateTime?
   completedAt DateTime?
+  /// Last error when a run failed; the job retries and an admin can retry by hand.
+  lastError   String?
   createdAt   DateTime  @default(now())
 
   session DrawSession  @relation(fields: [sessionId], references: [id])
@@ -301,5 +313,6 @@ model AuditLog {
   actor User? @relation(fields: [actorId], references: [id])
 
   @@index([entityType, entityId])
+  @@index([action])
   @@index([createdAt])
 }

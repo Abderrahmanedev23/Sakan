@@ -17,6 +17,12 @@ export class DrawsProcessor extends WorkerHost {
 
   async process(job: Job<RunDrawJobData>) {
     this.logger.log(`Running draw for session ${job.data.sessionId}`);
-    await this.draws.executeDraw(job.data.sessionId);
+    try {
+      await this.draws.executeDraw(job.data.sessionId);
+    } catch (err) {
+      this.logger.error(`Draw for session ${job.data.sessionId} failed: ${err}`);
+      await this.draws.recordFailure(job.data.sessionId, err);
+      throw err;
+    }
   }
 }

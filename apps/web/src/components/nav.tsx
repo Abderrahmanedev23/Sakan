@@ -17,8 +17,12 @@ export function Nav() {
       <div className="nav-links">
         <Link href="/" aria-current={active('/')}>{t['nav.home']}</Link>
         <Link href="/#steps">{t['nav.steps']}</Link>
+        <Link href="/results" aria-current={active('/results')}>{t['nav.results']}</Link>
         <Link href="/#faq">{t['nav.faq']}</Link>
-        {user?.role === 'ADMIN' && <Link href="/admin" aria-current={active('/admin')}>{t['nav.admin']}</Link>}
+        {user?.role === 'ADMIN' && <Link href="/admin/sessions" aria-current={pathname.startsWith('/admin') ? 'page' : undefined}>{t['nav.admin']}</Link>}
+        {user && user.role !== 'ADMIN' && (
+          <Link href="/participations" aria-current={active('/participations')}>{t['nav.participations']}</Link>
+        )}
         {user && <Link href="/profile" aria-current={active('/profile')}>{t['nav.account']}</Link>}
       </div>
       <div className="nav-actions">

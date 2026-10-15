@@ -57,5 +57,6 @@ export const DrawStatus = {
   RUNNING: 'RUNNING',
   COMPLETED: 'COMPLETED',
   FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
 } as const;
 export type DrawStatus = (typeof DrawStatus)[keyof typeof DrawStatus];

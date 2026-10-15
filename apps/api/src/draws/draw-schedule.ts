@@ -50,3 +50,15 @@ function zonedTimeToUtc(year: number, month: number, day: number, hour: number, 
   }
   return new Date(guess);
 }
+
+/** When a session's draw runs: a fixed delay after it filled if one is set, else the next draw time of day. */
+export function drawTimeFor(session: {
+  filledAt: Date | null;
+  drawTimeOfDay: string;
+  timezone: string;
+  drawDelayMinutes: number | null;
+}): Date {
+  if (!session.filledAt) throw new Error('Session has not filled yet');
+  if (session.drawDelayMinutes) return new Date(session.filledAt.getTime() + session.drawDelayMinutes * 60_000);
+  return nextDrawTime(session.filledAt, session.drawTimeOfDay, session.timezone);
+}
